@@ -12,7 +12,8 @@ This script needs Hammerspoon in order to work.
 
 ## How to install
 
- - Extract the zip file, containing `MiroWindowsManager.spoon` in `~/.hammerspoon/Spoons`
+ - Clone `miro-windows-manager` to `~/.hammerspoon/Spoons`
+ - Rename `miro-windows-manager` to `MiroWindowsManager.spoon`
  - Now you need to configure Hammerspoon in order to load this spoon in `~/.hammerspoon/Spoons/MiroWindowsManager.spoon` adding the following snippet of code in your `init.lua` file:
 ```
 local hyper = {"ctrl", "alt", "cmd"}
@@ -25,7 +26,8 @@ spoon.MiroWindowsManager:bindHotkeys({
   right = {hyper, "right"},
   down = {hyper, "down"},
   left = {hyper, "left"},
-  fullscreen = {hyper, "f"}
+  center = {hyper, "f"}
+  fullscreen = {hyper, "c"}
 })
 ```
 
