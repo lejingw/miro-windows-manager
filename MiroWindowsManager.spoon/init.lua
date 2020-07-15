@@ -39,7 +39,7 @@ obj.license = "MIT - https://opensource.org/licenses/MIT"
 --- The sizes that the window can have. 
 --- The sizes are expressed as dividend of the entire screen's size.
 --- For example `{2, 3, 3/2}` means that it can be 1/2, 1/3 and 2/3 of the total screen's size
-obj.sizes = {2, 3, 3/2}
+obj.sizes = {3, 2, 3/2}
 
 --- MiroWindowsManager.fullScreenSizes
 --- Variable
@@ -47,6 +47,7 @@ obj.sizes = {2, 3, 3/2}
 --- The sizes are expressed as dividend of the entire screen's size.
 --- For example `{1, 4/3, 2}` means that it can be 1/1 (hence full screen), 3/4 and 1/2 of the total screen's size
 obj.fullScreenSizes = {1, 4/3, 2}
+obj.centerScreenSizes = {3, 2, 4/3}
 
 --- MiroWindowsManager.GRID
 --- Variable
@@ -115,6 +116,32 @@ function obj:_nextFullScreenStep()
     cell.h = self.GRID.h / nextSize
     cell.x = (self.GRID.w - self.GRID.w / nextSize) / 2
     cell.y = (self.GRID.h - self.GRID.h / nextSize) / 2
+
+    hs.grid.set(win, cell, screen)
+  end
+end
+
+function obj:_nextCenterScreenStep()
+  if hs.window.focusedWindow() then
+    local win = hs.window.frontmostWindow()
+    local id = win:id()
+    local screen = win:screen()
+
+    cell = hs.grid.get(win, screen)
+
+    local nextSize = self.centerScreenSizes[1]
+    for i=1,#self.centerScreenSizes do
+      if cell.w == self.GRID.w / self.centerScreenSizes[i] and 
+         cell.x == (self.GRID.w - self.GRID.w / self.centerScreenSizes[i]) / 2 then
+        nextSize = self.centerScreenSizes[(i % #self.centerScreenSizes) + 1]
+        break
+      end
+    end
+
+    cell.w = self.GRID.w / nextSize
+    cell.h = self.GRID.h
+    cell.x = (self.GRID.w - self.GRID.w / nextSize) / 2
+    cell.y = 0
 
     hs.grid.set(win, cell, screen)
   end
@@ -222,6 +249,9 @@ function obj:bindHotkeys(mapping)
 
   hs.hotkey.bind(mapping.fullscreen[1], mapping.fullscreen[2], function ()
     self:_nextFullScreenStep()
+  end)
+  hs.hotkey.bind(mapping.center[1], mapping.center[2], function ()
+    self:_nextCenterScreenStep()
   end)
 
 end
