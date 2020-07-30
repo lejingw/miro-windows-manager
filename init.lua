@@ -15,14 +15,10 @@
 -- OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER 
 -- DEALINGS IN THE SOFTWARE.
 
---- === MiroWindowsManager ===
----
---- With this script you will be able to move the window in halves and in corners using your keyboard and mainly using arrows. You would also be able to resize them by thirds, quarters, or halves.
---- 
---- Official homepage for more info and documentation: [https://github.com/miromannino/miro-windows-manager](https://github.com/miromannino/miro-windows-manager)
----
---- Download: [https://github.com/miromannino/miro-windows-manager/raw/master/MiroWindowsManager.spoon.zip](https://github.com/miromannino/miro-windows-manager/raw/master/MiroWindowsManager.spoon.zip)
----
+-- === MiroWindowsManager ===
+-- With this script you will be able to move the window in halves and in corners using your keyboard and mainly using arrows. You would also be able to resize them by thirds, quarters, or halves.
+-- Official homepage for more info and documentation: [https://github.com/miromannino/miro-windows-manager](https://github.com/miromannino/miro-windows-manager)
+-- Download: [https://github.com/miromannino/miro-windows-manager/raw/master/MiroWindowsManager.spoon.zip](https://github.com/miromannino/miro-windows-manager/raw/master/MiroWindowsManager.spoon.zip)
 
 local obj={}
 obj.__index = obj
@@ -34,26 +30,13 @@ obj.author = "Miro Mannino <miro.mannino@gmail.com>"
 obj.homepage = "https://github.com/miromannino/miro-windows-management"
 obj.license = "MIT - https://opensource.org/licenses/MIT"
 
---- MiroWindowsManager.sizes
---- Variable
---- The sizes that the window can have. 
---- The sizes are expressed as dividend of the entire screen's size.
---- For example `{2, 3, 3/2}` means that it can be 1/2, 1/3 and 2/3 of the total screen's size
-obj.sizes = {3, 2, 3/2}
-
---- MiroWindowsManager.fullScreenSizes
---- Variable
---- The sizes that the window can have in full-screen. 
---- The sizes are expressed as dividend of the entire screen's size.
---- For example `{1, 4/3, 2}` means that it can be 1/1 (hence full screen), 3/4 and 1/2 of the total screen's size
-obj.fullScreenSizes = {1, 4/3, 2}
+-- Size:`{2, 3, 3/2}` means that it can be 1/2, 1/3 and 2/3 of the total screen's size
+obj.withSizes = {3, 2, 3/2, 4}
+obj.hightSizes = {2, 1}
 obj.centerScreenSizes = {3, 2, 4/3}
 
---- MiroWindowsManager.GRID
---- Variable
---- The screen's size using `hs.grid.setGrid()`
---- This parameter is used at the spoon's `:init()`
-obj.GRID = {w = 24, h = 24}
+-- The screen's size using `hs.grid.setGrid()`, which is used at the spoon's `:init()`
+obj.GRID = {w = 12, h = 12}
 
 obj._pressed = {
   up = false,
@@ -64,58 +47,40 @@ obj._pressed = {
 
 function obj:_nextStep(dim, offs, cb)
   if hs.window.focusedWindow() then
+    local dimSizes = dim == 'w' and self.withSizes or self.hightSizes
     local axis = dim == 'w' and 'x' or 'y'
-    local oppDim = dim == 'w' and 'h' or 'w'
-    local oppAxis = dim == 'w' and 'y' or 'x'
     local win = hs.window.frontmostWindow()
-    local id = win:id()
     local screen = win:screen()
+    local cell = hs.grid.get(win, screen)
 
-    cell = hs.grid.get(win, screen)
-
-    local nextSize = self.sizes[1]
-    for i=1,#self.sizes do
-      if cell[dim] == self.GRID[dim] / self.sizes[i] and
-        (cell[axis] + (offs and cell[dim] or 0)) == (offs and self.GRID[dim] or 0)
-        then
-          nextSize = self.sizes[(i % #self.sizes) + 1]
+    local nextSize = -1
+    for i=1,#dimSizes do
+      if cell[dim] == self.GRID[dim] / dimSizes[i] and (cell[axis] + (offs and cell[dim] or 0)) == (offs and self.GRID[dim] or 0) then
+          nextSize = dimSizes[(i % #dimSizes) + 1]
         break
       end
     end
 
-    cb(cell, nextSize)
-    if cell[oppAxis] ~= 0 and cell[oppAxis] + cell[oppDim] ~= self.GRID[oppDim] then
-      cell[oppDim] = self.GRID[oppDim]
-      cell[oppAxis] = 0
+    if nextSize == -1 and (cell[axis] + (offs and cell[dim] or 0)) == (offs and self.GRID[dim] or 0) then 
+      print('reset size when exceeded edge')
+      nextSize = dimSizes[1]
     end
 
-    hs.grid.set(win, cell, screen)
-  end
-end
-
-function obj:_nextFullScreenStep()
-  if hs.window.focusedWindow() then
-    local win = hs.window.frontmostWindow()
-    local id = win:id()
-    local screen = win:screen()
-
-    cell = hs.grid.get(win, screen)
-
-    local nextSize = self.fullScreenSizes[1]
-    for i=1,#self.fullScreenSizes do
-      if cell.w == self.GRID.w / self.fullScreenSizes[i] and 
-         cell.h == self.GRID.h / self.fullScreenSizes[i] and
-         cell.x == (self.GRID.w - self.GRID.w / self.fullScreenSizes[i]) / 2 and
-         cell.y == (self.GRID.h - self.GRID.h / self.fullScreenSizes[i]) / 2 then
-        nextSize = self.fullScreenSizes[(i % #self.fullScreenSizes) + 1]
-        break
-      end
+    if nextSize ~= -1 then
+      print("current grid geo x:" .. cell.x .. " y:" .. cell.y .. " w:" .. cell.w .. " h:" .. cell.h .. " nextSize:" .. nextSize)
+      cb(cell, nextSize)
+    else
+      local direct = dim == 'w' and (offs and 'right' or 'left') or (offs and 'down' or 'up')
+      print("current grid geo x:" .. cell.x .. " y:" .. cell.y .. " w:" .. cell.w .. " h:" .. cell.h .. " move " .. direct .. "(without change size)");
+      cell[axis] = cell[axis] + cell[dim] * (offs and 1 or -1)
     end
 
-    cell.w = self.GRID.w / nextSize
-    cell.h = self.GRID.h / nextSize
-    cell.x = (self.GRID.w - self.GRID.w / nextSize) / 2
-    cell.y = (self.GRID.h - self.GRID.h / nextSize) / 2
+    -- local oppDim = dim == 'w' and 'h' or 'w'
+    -- local oppAxis = dim == 'w' and 'y' or 'x'
+    -- if cell[oppAxis] ~= 0 and cell[oppAxis] + cell[oppDim] ~= self.GRID[oppDim] then
+    --   cell[oppDim] = self.GRID[oppDim]
+    --   cell[oppAxis] = 0
+    -- end
 
     hs.grid.set(win, cell, screen)
   end
@@ -124,15 +89,13 @@ end
 function obj:_nextCenterScreenStep()
   if hs.window.focusedWindow() then
     local win = hs.window.frontmostWindow()
-    local id = win:id()
     local screen = win:screen()
 
     cell = hs.grid.get(win, screen)
 
     local nextSize = self.centerScreenSizes[1]
     for i=1,#self.centerScreenSizes do
-      if cell.w == self.GRID.w / self.centerScreenSizes[i] and 
-         cell.x == (self.GRID.w - self.GRID.w / self.centerScreenSizes[i]) / 2 then
+      if cell.w == self.GRID.w / self.centerScreenSizes[i] and cell.x == (self.GRID.w - self.GRID.w / self.centerScreenSizes[i]) / 2 then
         nextSize = self.centerScreenSizes[(i % #self.centerScreenSizes) + 1]
         break
       end
@@ -150,7 +113,6 @@ end
 function obj:_fullDimension(dim)
   if hs.window.focusedWindow() then
     local win = hs.window.frontmostWindow()
-    local id = win:id()
     local screen = win:screen()
     cell = hs.grid.get(win, screen)
 
@@ -165,28 +127,21 @@ function obj:_fullDimension(dim)
   end
 end
 
---- MiroWindowsManager:bindHotkeys()
---- Method
---- Binds hotkeys for Miro's Windows Manager
---- Parameters:
----  * mapping - A table containing hotkey details for the following items:
----   * up: for the up action (usually {hyper, "up"})
----   * right: for the right action (usually {hyper, "right"})
----   * down: for the down action (usually {hyper, "down"})
----   * left: for the left action (usually {hyper, "left"})
----   * fullscreen: for the full-screen action (e.g. {hyper, "f"})
----
---- A configuration example can be:
---- ```
---- local hyper = {"ctrl", "alt", "cmd"}
---- spoon.MiroWindowsManager:bindHotkeys({
----   up = {hyper, "up"},
----   right = {hyper, "right"},
----   down = {hyper, "down"},
----   left = {hyper, "left"},
----   fullscreen = {hyper, "f"}
---- })
---- ```
+-- Binds hotkeys for Miro's Windows Manager, keys:
+-- f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12, f13, f14, f15, f16, f17, f18, f19, f20,
+-- pad, pad*, pad+, pad/, pad-, pad=, pad0, pad1, pad2, pad3, pad4, pad5, pad6, pad7, pad8, pad9, padclear, padenter,
+-- return, tab, space, delete, escape, help, home, pageup, forwarddelete, end, pagedown, left, right, down, up,
+-- shift, rightshift, cmd, rightcmd, alt, rightalt, ctrl, rightctrl, capslock, fn
+--
+-- local hyper = {"ctrl", "alt", "cmd"}
+-- spoon.MiroWindowsManager:bindHotkeys({
+--   up = {hyper, "up"},
+--   right = {hyper, "right"},
+--   down = {hyper, "down"},
+--   left = {hyper, "left"},
+--   center = {hyper, "pad5"}
+-- })
+-- ```
 function obj:bindHotkeys(mapping)
   hs.inspect(mapping)
   print("Bind Hotkeys for Miro's Windows Manager")
@@ -247,9 +202,6 @@ function obj:bindHotkeys(mapping)
     self._pressed.up = false
   end)
 
-  hs.hotkey.bind(mapping.fullscreen[1], mapping.fullscreen[2], function ()
-    self:_nextFullScreenStep()
-  end)
   hs.hotkey.bind(mapping.center[1], mapping.center[2], function ()
     self:_nextCenterScreenStep()
   end)
